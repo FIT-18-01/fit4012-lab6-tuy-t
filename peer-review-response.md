@@ -3,7 +3,7 @@
 ## Thông tin nhóm
 
 - **Thành viên 1**: Cao Minh Hưng - 1871020285
-- **Thành viên 2**: Nguyễn Thị Tuyết - 1871020
+- **Thành viên 2**: Nguyễn Thị Tuyết - 1871020644
 
 ## Phản hồi từ review
 
