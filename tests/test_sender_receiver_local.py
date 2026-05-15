@@ -1,6 +1,7 @@
-import os
+﻿import os
 import socket
 import threading
+import time
 from pathlib import Path
 
 from aes_socket_utils import (
@@ -68,10 +69,22 @@ def _sender_send(host, key_port, data_port, message, timeout=10):
         sock.connect((host, key_port))
         sock.sendall(key_packet)
 
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.settimeout(timeout)
-        sock.connect((host, data_port))
-        sock.sendall(data_packet)
+    # Retry connecting to data_port with backoff to handle race condition:
+    # receiver may still be closing key_port and opening data_port.
+    max_attempts = 5
+    last_error = None
+    for attempt in range(max_attempts):
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.settimeout(timeout)
+                sock.connect((host, data_port))
+                sock.sendall(data_packet)
+            return
+        except (ConnectionRefusedError, OSError) as e:
+            last_error = e
+            if attempt < max_attempts - 1:
+                time.sleep(0.1 * (attempt + 1))
+    raise last_error  # Re-raise if all attempts failed
 
 
 def test_local_sender_receiver_roundtrip():
