@@ -1,0 +1,6 @@
+[*] Receiver đang lắng nghe kênh khóa tại 127.0.0.1:59921
+[+] Đã nhận AES key và IV.
+[*] Receiver đang lắng nghe kênh dữ liệu tại 127.0.0.1:59920
+[+] Đã nhận ciphertext.
+[+] Đã giải mã thành công.
+[+] Bản tin gốc: Xin chao FIT4012 - Lab 6 AES Socket

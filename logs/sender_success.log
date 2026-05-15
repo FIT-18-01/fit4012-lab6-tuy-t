@@ -1,0 +1,12 @@
+[+] Đã tạo AES key và IV.
+[+] Đã gửi key/IV qua kênh khóa.
+[+] Đã gửi ciphertext qua kênh dữ liệu.
+Server: 127.0.0.1
+Key port: 59921
+Data port: 59920
+AES key size: 16 bytes
+Key: 79a1ba3cd2b23ca7d33f028bdf11d86b
+IV: 4c8dca91c79790c2d9e2c112f202c8a9
+Plaintext length: 35 bytes
+Ciphertext length: 48 bytes
+Ciphertext: b39db4cb6093e46c1f571b14382a2379d7e427f99437f8b99fb4239defe074b384b7a0d5c6cd1df12662b9e0b7536dec
