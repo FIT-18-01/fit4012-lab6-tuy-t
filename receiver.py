@@ -1,6 +1,11 @@
 import os
 import socket
+import sys
 from pathlib import Path
+
+# Force UTF-8 encoding for stdout on Windows (fix UnicodeEncodeError with cp1252)
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
 
 from aes_socket_utils import (
     LENGTH_HEADER_SIZE,

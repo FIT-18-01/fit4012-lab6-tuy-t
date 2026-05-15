@@ -16,20 +16,20 @@ Lab này kế thừa ý tưởng từ Lab 3 DES Socket, nhưng nâng cấp theo 
 
 ## Team members
 
-- **Thành viên 1**: TODO_MEMBER_1 - MSSV: TODO_MEMBER_1_ID
-- **Thành viên 2**: TODO_MEMBER_2 - MSSV: TODO_MEMBER_2_ID
+- **Thành viên 1**: Cao Minh Hưng - 1871020285
+- **Thành viên 2**: Nguyễn Thị Tuyết - 1871020
 
 ## Task division
 
-- **Thành viên 1 phụ trách chính**: TODO_ROLE_MEMBER_1
-- **Thành viên 2 phụ trách chính**: TODO_ROLE_MEMBER_2
-- **Phần làm chung**: TODO_SHARED_WORK
+- **Thành viên 1 (Cao Minh Hưng) phụ trách chính**: `aes_socket_utils.py` (các hàm mã hóa AES-CBC, giải mã, PKCS#7 padding, build/parse key packet và data packet) và `sender.py` (gửi key/IV qua kênh khóa KEY_PORT, gửi ciphertext qua kênh dữ liệu DATA_PORT, ghi log gửi)
+- **Thành viên 2 (Nguyễn Thị Tuyết) phụ trách chính**: `receiver.py` (lắng nghe KEY_PORT nhận key/IV, lắng nghe DATA_PORT nhận ciphertext, giải mã AES-CBC, ghi log nhận) và viết test cases (`tests/`)
+- **Phần làm chung**: Viết báo cáo (`report-1page.md`, `threat-model-1page.md`), chạy thử nghiệm tích hợp end-to-end, tạo file log mẫu trong `logs/`, đảm bảo CI pass
 
 ## Demo roles
 
-- **Demo Sender / kênh khóa / log gửi**: TODO_DEMO_ROLE_1
-- **Demo Receiver / kênh dữ liệu / giải mã**: TODO_DEMO_ROLE_2
-- **Cả hai cùng trả lời threat model và ethics**: TODO_DEMO_ROLE_SHARED
+- **Demo Sender / kênh khóa / log gửi**: Thành viên 1 (Cao Minh Hưng) - trình diễn gửi AES key và IV qua KEY_PORT, gửi ciphertext qua DATA_PORT, hiển thị log gửi
+- **Demo Receiver / kênh dữ liệu / giải mã**: Thành viên 2 (Nguyễn Thị Tuyết) - trình diễn nhận key/IV từ KEY_PORT, nhận ciphertext từ DATA_PORT, giải mã AES-CBC, hiển thị log nhận và bản tin gốc
+- **Cả hai cùng trả lời threat model và ethics**: Cả hai thành viên cùng giải thích mô hình mối đe dọa, điểm yếu của thiết kế (gửi key/IV plaintext), và trả lời các câu hỏi về đạo đức an ninh mạng
 
 ---
 

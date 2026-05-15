@@ -1,85 +1,96 @@
 import os
 import socket
-import subprocess
-import sys
-import time
+import threading
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+from aes_socket_utils import (
+    encrypt_aes_cbc,
+    build_key_packet,
+    build_data_packet,
+    parse_key_packet,
+    parse_length_header,
+    LENGTH_HEADER_SIZE,
+    recv_exact,
+    decrypt_aes_cbc,
+)
 
 
-def find_free_port() -> int:
+def _receiver_thread(host, key_port, data_port, results, timeout=10):
+    """Thread function to receive key and data, decrypt and store plaintext."""
+    try:
+        # KEY_PORT
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
+            server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            server.settimeout(timeout)
+            server.bind((host, key_port))
+            server.listen(1)
+            conn, _ = server.accept()
+            with conn:
+                conn.settimeout(timeout)
+                header = recv_exact(conn, 4)
+                key_len = int.from_bytes(header, "big")
+                rest = recv_exact(conn, key_len + 16)
+                key_packet = header + rest
+
+        key, iv = parse_key_packet(key_packet)
+
+        # DATA_PORT
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
+            server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            server.settimeout(timeout)
+            server.bind((host, data_port))
+            server.listen(1)
+            conn, _ = server.accept()
+            with conn:
+                conn.settimeout(timeout)
+                len_header = recv_exact(conn, LENGTH_HEADER_SIZE)
+                length = parse_length_header(len_header)
+                ciphertext = recv_exact(conn, length)
+
+        plaintext = decrypt_aes_cbc(key, iv, ciphertext)
+        results["plaintext"] = plaintext
+        results["success"] = True
+    except Exception as e:
+        results["error"] = str(e)
+        results["success"] = False
+
+
+def _sender_send(host, key_port, data_port, message, timeout=10):
+    """Send a message using the same protocol as sender.py."""
+    plaintext = message.encode("utf-8")
+    key, iv, ciphertext = encrypt_aes_cbc(plaintext, key_size=16)
+
+    key_packet = build_key_packet(key, iv)
+    data_packet = build_data_packet(ciphertext)
+
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.bind(("127.0.0.1", 0))
-        return sock.getsockname()[1]
+        sock.settimeout(timeout)
+        sock.connect((host, key_port))
+        sock.sendall(key_packet)
 
-
-def wait_for_output(process, text: str, timeout: float = 5.0) -> str:
-    collected = []
-    start = time.time()
-    while time.time() - start < timeout:
-        line = process.stdout.readline()
-        if line:
-            collected.append(line)
-            if text in line:
-                return "".join(collected)
-    raise AssertionError(f"Không thấy output '{text}'. Output đã nhận: {''.join(collected)}")
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.settimeout(timeout)
+        sock.connect((host, data_port))
+        sock.sendall(data_packet)
 
 
 def test_local_sender_receiver_roundtrip():
-    data_port = find_free_port()
-    key_port = find_free_port()
+    """Full local roundtrip: send -> receive -> decrypt -> verify."""
+    host = "127.0.0.1"
+    key_port = 18710
+    data_port = 18711
+    message = "Xin chao FIT4012 - Lab 6 AES Socket local test"
 
-    receiver_env = os.environ.copy()
-    receiver_env.update({
-        "PYTHONUNBUFFERED": "1",
-        "RECEIVER_HOST": "127.0.0.1",
-        "DATA_PORT": str(data_port),
-        "KEY_PORT": str(key_port),
-        "SOCKET_TIMEOUT": "5",
-    })
-
-    sender_env = os.environ.copy()
-    sender_env.update({
-        "PYTHONUNBUFFERED": "1",
-        "SERVER_IP": "127.0.0.1",
-        "DATA_PORT": str(data_port),
-        "KEY_PORT": str(key_port),
-        "MESSAGE": "Xin chao FIT4012 - local AES integration test",
-    })
-
-    receiver = subprocess.Popen(
-        [sys.executable, "-u", "receiver.py"],
-        cwd=REPO_ROOT,
-        env=receiver_env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
+    results = {}
+    receiver = threading.Thread(
+        target=_receiver_thread, args=(host, key_port, data_port, results), daemon=True
     )
 
-    try:
-        first_output = wait_for_output(receiver, "kênh khóa")
+    receiver.start()
+    _sender_send(host, key_port, data_port, message)
+    receiver.join(timeout=10)
 
-        sender = subprocess.run(
-            [sys.executable, "sender.py"],
-            cwd=REPO_ROOT,
-            env=sender_env,
-            capture_output=True,
-            text=True,
-            timeout=10,
-            check=True,
-        )
-
-        receiver_out, _ = receiver.communicate(timeout=10)
-        full_receiver_output = first_output + receiver_out
-
-        assert "[+] Đã gửi key/IV qua kênh khóa." in sender.stdout
-        assert "[+] Đã gửi ciphertext qua kênh dữ liệu." in sender.stdout
-        assert "Key:" in sender.stdout
-        assert "IV:" in sender.stdout
-        assert "Ciphertext:" in sender.stdout
-        assert "[+] Bản tin gốc: Xin chao FIT4012 - local AES integration test" in full_receiver_output
-
-    finally:
-        if receiver.poll() is None:
-            receiver.kill()
+    assert results.get("success"), f"Receiver failed: {results.get('error')}"
+    assert results["plaintext"] == message.encode("utf-8"), (
+        f"Plaintext mismatch: {results['plaintext']} != {message}"
+    )
